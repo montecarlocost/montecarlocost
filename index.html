@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Monte Carlo Credit Forecasting</title>
+<style>
+  :root{
+    --navy:#0c2f52;
+    --navy-dark:#081f38;
+    --blue:#1a5fb4;
+    --blue-light:#eaf1fb;
+    --bg:#f4f6f9;
+    --card:#ffffff;
+    --border:#d9e1ea;
+    --text:#1c2733;
+    --muted:#5b6b7c;
+    --total:#0c3fae;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    padding:32px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+  .title-block h1{margin:0 0 4px;}
+  .title-block .sub{margin:0;}
+  h1{font-size:26px;margin:0 0 4px;color:var(--navy-dark);font-weight:700;}
+  .sub{font-style:italic;color:var(--muted);font-size:14px;margin:0 0 24px;}
+  .top-controls{
+    display:flex;gap:20px;flex-wrap:wrap;align-items:flex-end;
+    background:var(--card);border:1px solid var(--border);border-radius:10px;
+    padding:16px 20px;margin-bottom:24px;
+  }
+  .tc-item{display:flex;flex-direction:column;gap:4px;}
+  .tc-item label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
+  .tc-item input{
+    width:120px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;
+    font-size:14px;color:var(--text);
+  }
+  .grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:24px;
+  }
+  @media (max-width:900px){.grid{grid-template-columns:repeat(2,1fr);}}
+  @media (max-width:600px){.grid{grid-template-columns:1fr;}}
+  .card{
+    background:var(--card);border:1px solid var(--border);border-radius:10px;
+    overflow:hidden;display:flex;flex-direction:column;
+  }
+  .card-header{
+    background:var(--navy);color:#fff;padding:10px 14px;font-weight:700;font-size:14px;
+  }
+  .card-body{padding:16px 16px 18px;flex:1;display:flex;flex-direction:column;gap:10px;}
+  .card-desc{font-size:12px;color:var(--muted);line-height:1.45;min-height:52px;}
+  .input-row{display:flex;align-items:center;gap:10px;}
+  input[type=range]{flex:1;accent-color:var(--blue);}
+  input[type=number]{
+    width:88px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;
+    font-size:14px;text-align:right;
+  }
+  .rate-note{font-size:11px;color:var(--muted);}
+  .card-result{
+    margin-top:auto;padding-top:10px;border-top:1px dashed var(--border);
+  }
+  .cr-line{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:2px;}
+  .cr-total{display:flex;justify-content:space-between;font-size:16px;font-weight:700;color:var(--navy-dark);margin-top:4px;}
+  .card-baseline{
+    display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--navy-dark);
+    margin-top:8px;padding:6px 8px;border-top:none;background:var(--blue-light);border-radius:6px;
+  }
+  .card-baseline b{color:var(--total);font-weight:800;font-size:14px;}
+  .baseline-clarifier{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.4;}
+  .totals{
+    background:var(--card);border:1px solid var(--border);border-radius:10px;
+    padding:22px 26px;display:flex;align-items:center;justify-content:center;gap:22px;flex-wrap:wrap;
+    margin-bottom:24px;
+  }
+  .t-block{text-align:center;min-width:150px;}
+  .t-value{font-size:24px;font-weight:800;color:var(--navy-dark);}
+  .t-label{font-size:12px;color:var(--muted);margin-top:4px;}
+  .t-op{font-size:24px;color:var(--muted);font-weight:300;}
+  .t-final .t-value{color:var(--total);font-size:32px;}
+  .t-final .t-label{color:var(--total);font-weight:700;}
+  .assumptions{
+    background:var(--card);border:1px solid var(--border);border-radius:10px;
+    padding:18px 22px;margin-bottom:20px;
+  }
+  .assumptions h2{
+    font-size:14px;color:var(--navy-dark);margin:0 0 12px;font-weight:700;
+  }
+  .assump-box{
+    background:var(--blue-light);border:1px solid #b9d4f0;color:var(--navy-dark);
+    border-radius:6px;padding:10px 14px;font-size:13px;font-weight:600;line-height:1.55;margin-bottom:10px;
+  }
+  .assump-box:last-child{margin-bottom:0;}
+  .footnote{font-size:11px;color:var(--muted);margin-top:18px;text-align:center;line-height:1.6;}
+  .footnote a{color:var(--blue);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Monte Carlo Credit Forecasting</h1>
+  <p class="sub">Simulates credit consumption based on the number of Table Monitors, metrics, and Custom SQL variations implemented.</p>
+
+  <div class="top-controls">
+    <div class="tc-item">
+      <label>Billable days / year</label>
+      <input type="number" id="daysYear" value="365" step="1" min="1">
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+      <div class="card-header">Table Monitors</div>
+      <div class="card-body">
+        <div class="card-desc">Freshness + Volume + Schema Change combined per monitored table/view. Decreasing rate by tiers of 1,000 tables.</div>
+        <div class="input-row">
+          <input type="range" id="tablesSlider" min="0" max="100000" step="50" value="150">
+          <input type="number" id="tablesInput" min="0" max="1000000" value="150">
+        </div>
+        <div class="rate-note" id="tablesRateNote"></div>
+        <div class="card-result">
+          <div class="cr-line"><span>Credits/day</span><span id="tablesCredits">0</span></div>
+          <div class="cr-total"><span>Annual credits</span><span id="tablesAnnual">0</span></div>
+          <div class="card-baseline"><span>Per-Node Assumptions</span><b>~95,813/yr</b></div>
+          <div class="baseline-clarifier">(freshness, volume, schema via ML)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Metric Monitors</div>
+      <div class="card-body">
+        <div class="card-desc">Enter the total number of metrics tracked (field-metric pairs x segments) across all Metric/Comparison Monitors. Metrics broken down by a dimension (e.g. market, product) count individually.</div>
+        <div class="input-row">
+          <input type="range" id="metricsSlider" min="0" max="5000" step="10" value="500">
+          <input type="number" id="metricsInput" min="0" max="5000" value="500">
+        </div>
+        <div class="rate-note" id="metricsRateNote"></div>
+        <div class="card-result">
+          <div class="cr-line"><span>Credits/day</span><span id="metricsCredits">0</span></div>
+          <div class="cr-total"><span>Annual credits</span><span id="metricsAnnual">0</span></div>
+          <div class="card-baseline"><span>Per-Node Assumptions</span><b>~21,152/yr</b></div>
+          <div class="baseline-clarifier">(anomalies, distribution changes, comparison checks - metrics broken down by a dimension count individually)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Custom SQL Monitors</div>
+      <div class="card-body">
+        <div class="card-desc">Enter the total number of variations (unique SQL variable combinations) across Custom SQL rules.</div>
+        <div class="input-row">
+          <input type="range" id="validSlider" min="0" max="2000" step="5" value="100">
+          <input type="number" id="validInput" min="0" max="1000000" value="100">
+        </div>
+        <div class="rate-note" id="validRateNote"></div>
+        <div class="card-result">
+          <div class="cr-line"><span>Credits/day</span><span id="validCredits">0</span></div>
+          <div class="cr-total"><span>Annual credits</span><span id="validAnnual">0</span></div>
+          <div class="card-baseline"><span>Per-Node Assumptions</span><b>~15,878/yr</b></div>
+          <div class="baseline-clarifier">(complex checks)</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="totals">
+    <div class="t-block"><div class="t-value" id="totTables">0</div><div class="t-label">Tables (credits/yr)</div></div>
+    <div class="t-op">+</div>
+    <div class="t-block"><div class="t-value" id="totMetrics">0</div><div class="t-label">Metrics (credits/yr)</div></div>
+    <div class="t-op">+</div>
+    <div class="t-block"><div class="t-value" id="totValid">0</div><div class="t-label">Custom SQL (credits/yr)</div></div>
+    <div class="t-op">=</div>
+    <div class="t-block t-final"><div class="t-value" id="grandTotal">0</div><div class="t-label">TOTAL ANNUAL CREDITS</div></div>
+  </div>
+
+  <div class="assumptions">
+    <div class="assump-box">Assumption is that nodes and markets follow a long tail pattern, with some nodes having a leading adoption and others having a minimal use.</div>
+    <div class="assump-box">Additional credits can be purchased at any time during the term at the same discounted rate, in 100,000-credit increments.</div>
+  </div>
+
+  <p class="footnote">Rate source: <a href="https://docs.getmontecarlo.com/docs/version-21" target="_blank">Monte Carlo Consumption Rates - Version 2.1</a>.</p>
+</div>
+
+<script>
+function tieredCredits(units, tiers){
+  let remaining = units;
+  let prevCap = 0;
+  let credits = 0;
+  for(const t of tiers){
+    if(remaining <= 0) break;
+    const capWidth = t.upTo - prevCap;
+    const used = Math.min(remaining, capWidth);
+    credits += used * t.rate;
+    remaining -= used;
+    prevCap = t.upTo;
+  }
+  if(remaining > 0){
+    const lastRate = tiers[tiers.length-1].rate;
+    credits += remaining * lastRate;
+  }
+  return credits;
+}
+
+function currentTierLabel(units, tiers){
+  let prevCap = 0;
+  for(const t of tiers){
+    if(units <= t.upTo){
+      return t.rate.toString().replace(/^0\./,'.') + ' credit(s)/unit - current tier (up to ' + t.upTo.toLocaleString() + ')';
+    }
+    prevCap = t.upTo;
+  }
+  return tiers[tiers.length-1].rate + ' credit(s)/unit (beyond ' + prevCap.toLocaleString() + ')';
+}
+
+const tableTiers = [
+  {upTo:1000, rate:1.75},
+  {upTo:2000, rate:1.09},
+  {upTo:3000, rate:0.68},
+  {upTo:4000, rate:0.43},
+  {upTo:5000, rate:0.27},
+  {upTo:6000, rate:0.17},
+  {upTo:7000, rate:0.10},
+  {upTo:8000, rate:0.065},
+  {upTo:9000, rate:0.041},
+  {upTo:10000, rate:0.025},
+  {upTo:100000, rate:0.010},
+];
+
+const metricTiers = [
+  {upTo:5, rate:1.0},
+  {upTo:15, rate:0.63},
+  {upTo:25, rate:0.39},
+  {upTo:50, rate:0.24},
+  {upTo:100, rate:0.15},
+  {upTo:250, rate:0.095},
+  {upTo:500, rate:0.060},
+  {upTo:1000, rate:0.037},
+  {upTo:2500, rate:0.023},
+  {upTo:5000, rate:0.015},
+  {upTo:10000, rate:0.0091},
+  {upTo:25000, rate:0.0057},
+  {upTo:50000, rate:0.0036},
+  {upTo:100000, rate:0.0022},
+  {upTo:250000, rate:0.0014},
+  {upTo:500000, rate:0.00087},
+  {upTo:1000000, rate:0.00054},
+];
+
+const validTiers = [
+  {upTo:1, rate:2},
+  {upTo:10, rate:1},
+  {upTo:50, rate:0.5},
+  {upTo:200, rate:0.25},
+];
+
+function fmtNum(n){
+  return n.toLocaleString('en-US', {maximumFractionDigits:0});
+}
+function fmtCredits(n){
+  return n.toLocaleString('en-US', {maximumFractionDigits:1});
+}
+
+function syncPair(sliderId, inputId){
+  const slider = document.getElementById(sliderId);
+  const input = document.getElementById(inputId);
+  slider.addEventListener('input', ()=>{ input.value = slider.value; recalc(); });
+  input.addEventListener('input', ()=>{
+    let v = Number(input.value)||0;
+    if(v<0) v=0;
+    slider.value = Math.min(v, Number(slider.max));
+    recalc();
+  });
+}
+
+syncPair('tablesSlider','tablesInput');
+syncPair('metricsSlider','metricsInput');
+syncPair('validSlider','validInput');
+document.getElementById('daysYear').addEventListener('input', recalc);
+
+function recalc(){
+  const daysYear = Number(document.getElementById('daysYear').value) || 365;
+
+  const tables = Number(document.getElementById('tablesInput').value) || 0;
+  const metrics = Number(document.getElementById('metricsInput').value) || 0;
+  const valid = Number(document.getElementById('validInput').value) || 0;
+
+  const tablesCr = tieredCredits(tables, tableTiers);
+  const metricsCr = tieredCredits(metrics, metricTiers);
+  const validCr = tieredCredits(valid, validTiers);
+
+  const tablesAnnual = tablesCr * daysYear;
+  const metricsAnnual = metricsCr * daysYear;
+  const validAnnual = validCr * daysYear;
+
+  document.getElementById('tablesCredits').textContent = fmtCredits(tablesCr);
+  document.getElementById('metricsCredits').textContent = fmtCredits(metricsCr);
+  document.getElementById('validCredits').textContent = fmtCredits(validCr);
+
+  document.getElementById('tablesAnnual').textContent = fmtNum(tablesAnnual);
+  document.getElementById('metricsAnnual').textContent = fmtNum(metricsAnnual);
+  document.getElementById('validAnnual').textContent = fmtNum(validAnnual);
+
+  document.getElementById('totTables').textContent = fmtNum(tablesAnnual);
+  document.getElementById('totMetrics').textContent = fmtNum(metricsAnnual);
+  document.getElementById('totValid').textContent = fmtNum(validAnnual);
+  document.getElementById('grandTotal').textContent = fmtNum(tablesAnnual+metricsAnnual+validAnnual);
+
+  document.getElementById('tablesRateNote').textContent = currentTierLabel(tables, tableTiers);
+  document.getElementById('metricsRateNote').textContent = currentTierLabel(metrics, metricTiers);
+  document.getElementById('validRateNote').textContent = currentTierLabel(valid, validTiers);
+}
+
+recalc();
+</script>
+</body>
+</html>
